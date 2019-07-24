@@ -14,8 +14,17 @@ class EnvSpec(object):
 
 
 class GymEnv(object):
-    def __init__(self, env_name):
-        env = gym.make(env_name)
+    def __init__(self, env_factory):
+        if isinstance(env_factory, gym.Env):
+            env = env_factory
+        elif isinstance(env_factory, str):
+            env_name = env_factory
+            env = gym.make(env_name)
+        elif callable(env_factory):
+            env = env_factory()
+        else:
+            raise TypeError("Provide environment or a string id")
+
         self.env = env
         self.env_id = env.spec.id
 
@@ -25,12 +34,13 @@ class GymEnv(object):
             self._horizon = env.spec._horizon
 
         try:
-            self._action_dim = self.env.env.action_dim
+            # only single dimension? no way...
+            self._action_dim = self.env.action_dim
         except AttributeError:
             self._action_dim = self.env.action_space.shape[0]
 
         try:
-            self._observation_dim = self.env.env.obs_dim
+            self._observation_dim = self.env.obs_dim
         except AttributeError:
             self._observation_dim = self.env.observation_space.shape[0]
 

@@ -1,5 +1,7 @@
 import logging
 import numpy as np
+import gym
+
 from mjrl.utils.gym_env import GymEnv
 from mjrl.utils import tensor_utils
 logging.disable(logging.CRITICAL)
@@ -29,15 +31,14 @@ def do_rollout(
     """
 
     # get the correct env behavior
-    if type(env) == str:
+    if isinstance(env, (str, gym.Env)):
         env = GymEnv(env)
     elif isinstance(env, GymEnv):
         env = env
     elif callable(env):
         env = env()
     else:
-        print("Unsupported environment format")
-        raise AttributeError
+        raise TypeError(str(type(env)))
 
     if base_seed is not None:
         env.set_seed(base_seed)
