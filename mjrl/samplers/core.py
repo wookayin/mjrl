@@ -109,6 +109,9 @@ def sample_paths(
     num_cpu = mp.cpu_count() if num_cpu == 'max' else num_cpu
     assert type(num_cpu) == int
 
+    if base_seed is None:
+        base_seed = np.random.randint(2 ** 32)
+
     if num_cpu == 1:
         input_dict = dict(num_traj=num_traj, env=env, policy=policy,
                           eval_mode=eval_mode, horizon=horizon, base_seed=base_seed)
@@ -133,7 +136,7 @@ def sample_paths(
     # result is a paths type and results is list of paths
     for result in results:
         for path in result:
-            paths.append(path)  
+            paths.append(path)
 
     if suppress_print is False:
         print("======= Samples Gathered  ======= | >>>> Time taken = %f " %(timer.time()-start_time) )
@@ -179,7 +182,7 @@ def sample_data_batch(
 
 
 def _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_timeouts):
-    
+
     # Base case
     if max_timeouts == 0:
         return None
@@ -188,15 +191,18 @@ def _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_time
     parallel_runs = [pool.apply_async(func, kwds=input_dict) for input_dict in input_dict_list]
     try:
         results = [p.get(timeout=max_process_time) for p in parallel_runs]
-    except Exception as e:
-        print(str(e))
+    except mp.TimeoutError as e:
+        import traceback
+        traceback.print_exc()
         print("Timeout Error raised... Trying again")
+
+        r = _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_timeouts-1)
+        if r: return r
+        raise e
+
+    finally:
         pool.close()
         pool.terminate()
         pool.join()
-        return _try_multiprocess(func, input_dict_list, num_cpu, max_process_time, max_timeouts-1)
 
-    pool.close()
-    pool.terminate()
-    pool.join()  
     return results
