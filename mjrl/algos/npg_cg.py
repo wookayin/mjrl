@@ -89,7 +89,13 @@ class NPG(BatchREINFORCE):
     # ----------------------------------------------------------
     def train_from_paths(self, paths):
 
-        observations, actions, advantages, base_stats, self.running_score = self.process_paths(paths)
+        processed_paths, base_stats, self.running_score = self.process_paths(paths)
+        observations, actions, advantages = (
+            processed_paths['observations'],
+            processed_paths['actions'],
+            processed_paths['advantages'],
+        )
+
         if self.save_logs: self.log_rollout_statistics(paths)
 
         # Keep track of times for various computations
@@ -111,7 +117,7 @@ class NPG(BatchREINFORCE):
 
         # VPG
         ts = timer.time()
-        vpg_grad = self.flat_vpg(observations, actions, advantages)
+        vpg_grad = self.flat_vpg(**processed_paths)
         t_gLL += timer.time() - ts
 
         # NPG

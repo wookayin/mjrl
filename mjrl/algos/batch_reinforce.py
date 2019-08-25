@@ -49,7 +49,8 @@ class BatchREINFORCE:
         mean_kl = self.policy.mean_kl(new_dist_info, old_dist_info)
         return mean_kl
 
-    def flat_vpg(self, observations, actions, advantages):
+    def flat_vpg(self, observations, actions, advantages, **kwargs):
+        # see process_paths() for parameter spec
         cpi_surr = self.CPI_surrogate(observations, actions, advantages)
         vpg_grad = torch.autograd.grad(cpi_surr, self.policy.trainable_params)
         vpg_grad = np.concatenate([g.contiguous().view(-1).data.numpy() for g in vpg_grad])
@@ -113,7 +114,13 @@ class BatchREINFORCE:
     # ----------------------------------------------------------
     def train_from_paths(self, paths):
 
-        observations, actions, advantages, base_stats, self.running_score = self.process_paths(paths)
+        processed_paths, base_stats, self.running_score = self.process_paths(paths)
+        observations, actions, advantages = (
+            processed_paths['observations'],
+            processed_paths['actions'],
+            processed_paths['advantages'],
+        )
+
         if self.save_logs: self.log_rollout_statistics(paths)
 
         # Keep track of times for various computations
@@ -125,7 +132,7 @@ class BatchREINFORCE:
 
         # VPG
         ts = timer.time()
-        vpg_grad = self.flat_vpg(observations, actions, advantages)
+        vpg_grad = self.flat_vpg(**processed_paths)
         t_gLL += timer.time() - ts
 
         # Policy update with linesearch
@@ -191,7 +198,10 @@ class BatchREINFORCE:
         running_score = mean_return if self.running_score is None else \
                         0.9 * self.running_score + 0.1 * mean_return
 
-        return observations, actions, advantages, base_stats, running_score
+        return {'observations': observations,
+                'actions': actions,
+                'advantages': advantages,
+                }, base_stats, running_score
 
 
     def log_rollout_statistics(self, paths):
