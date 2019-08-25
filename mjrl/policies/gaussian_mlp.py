@@ -132,7 +132,7 @@ class MLP:
         LR = torch.exp(LL_new - LL_old)
         return LR
 
-    def mean_kl(self, new_dist_info, old_dist_info):
+    def kl(self, new_dist_info, old_dist_info):
         old_log_std = old_dist_info[2]
         new_log_std = new_dist_info[2]
         old_std = torch.exp(old_log_std)
@@ -142,4 +142,8 @@ class MLP:
         Nr = (old_mean - new_mean) ** 2 + old_std ** 2 - new_std ** 2
         Dr = 2 * new_std ** 2 + 1e-8
         sample_kl = torch.sum(Nr / Dr + new_log_std - old_log_std, dim=1)
+        return sample_kl
+
+    def mean_kl(self, new_dist_info, old_dist_info):
+        sample_kl = self.kl(new_dist_info, old_dist_info)
         return torch.mean(sample_kl)
